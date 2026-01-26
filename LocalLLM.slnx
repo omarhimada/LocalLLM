@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="LocalLLM.vcxproj" Id="d700ec1f-9994-4246-9eec-e9bbbb1e0a78" />
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+</Solution>
