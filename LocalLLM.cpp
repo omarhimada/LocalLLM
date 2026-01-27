@@ -11,7 +11,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 
 	QApplication app(argc, argv);
 
-	const std::wstring modelPathW = getExeDir() + L"\\..\\..\\Models\\gpt-oss-20b-mxfp4.gguf.gguf";
+	const std::wstring modelPathW = getExeDir() + L"\\..\\..\\Models\\gpt-oss-20b-mxfp4.gguf";
 	const std::string modelPathUtf8 = wideToUtf8(modelPathW);
 
 	const auto runtime = new LocalRuntime(modelPathUtf8);
