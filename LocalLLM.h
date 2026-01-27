@@ -38,7 +38,14 @@ struct LocalRuntime {
 		llama_backend_init();
 
 		const llama_model_params mp = llama_model_default_params();
-		model = llama_model_load_from_file(modelPathUtf8.c_str(), mp);
+		
+		try {
+			model = llama_model_load_from_file(modelPathUtf8.c_str(), mp);
+		} catch (const std::exception& e) {
+			qDebug() << "Caught exception:" << e.what();
+		} catch (...) {
+			qWarning() << "Caught an unknown exception type";
+		}
 
 		if (model == nullptr) {
 			std::string failedToLoadModelFromPath = "Failed to load model from path: ";

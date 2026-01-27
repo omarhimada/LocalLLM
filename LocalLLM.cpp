@@ -1,17 +1,30 @@
 ﻿#include <LocalLLM.h>
 
-/**
- * @brief Entry point for the LocalLLM Qt application. Initializes the Qt framework, loads a GGUF language model, creates the main GUI window with prompt input and output display areas, and starts the application event loop.
- * @params  WinMain parameters: instance handle, previous instance handle (unused), command line arguments, and show command. These parameters are not directly used by the function.
- * @return The application exit code returned by the Qt event loop, or 1 if the model fails to load.
- */
 int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int) {
 	int argc = 0;
 	char** argv = nullptr;
 
 	QApplication app(argc, argv);
 
-	const std::wstring modelPathW = getExeDir() + L"\\..\\..\\Models\\gpt-oss-20b-mxfp4.gguf";
+	/**
+	 * Currently troubleshooting MSVC regex incompatibilities/limitations with certain KVs within certain GGUF models.
+	 * For example with 'ministral-3-14B-Instruct.gguf'
+	 * 
+	 * Removed/sanitized tokenizer.chat_template in order to manually apply template due to MSVC regex limitations due to these exceptions when attempting to load the model.
+	 * --------------------------------------------
+	 * i.e.:
+	 *	"Exception thrown at 0x00007FFEEBA1A80A in LocalLLM.exe: Microsoft C++ exception: std::regex_error at memory location 0x000000A358B54910.
+	 *	 Exception thrown at 0x00007FFEEBA1A80A in LocalLLM.exe: Microsoft C++ exception: std::runtime_error at memory location 0x000000A358B5E518.
+	 *	 Exception thrown at 0x00007FFEEBA1A80A in LocalLLM.exe: Microsoft C++ exception: std::runtime_error at memory location 0x000000A358B5F208.
+	 * --------------------------------------------
+	 * Used gguf_new_metadata.py to accomplish this:
+	 * e.g.:
+	 *	(venv) PS C:\...\source\gg-py> python "C:\...\source\gg-py\gguf\scripts\gguf_new_metadata.py" "C:\...\...\ministral-3-14B-Instruct.gguf" "C:\...\...\ohtct-sanitized-ministral-3-14B-Instruct.gguf" --remove-metadata "tokenizer.chat_template"
+	 *	
+	 *	
+	 * TODO: This was not the solution. Going to try the unsloth model instead. 
+	 */
+	const std::wstring modelPathW = getExeDir() + L"\\..\\..\\Models\\ohtct-sanitized-ministral-314b-instruct.gguf";
 	const std::string modelPathUtf8 = wideToUtf8(modelPathW);
 
 	const auto runtime = new LocalRuntime(modelPathUtf8);
@@ -48,51 +61,50 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 	layout->addWidget(prompt);
 	layout->addWidget(sendButton);
 	layout->addWidget(output);
-	
-	/**
-	 * @brief Handles the Send button click by running LLM inference off the UI thread and streaming tokens into the output box.
-	 * @details Clears prior output, validates the prompt, then starts a UI timer that periodically flushes a thread-safe
-	 *          buffer of streamed token text into the `output` editor. Inference runs via `QtConcurrent::run` and reports
-	 *          token pieces through a callback that appends to the shared `StreamBuffer`. The Send button is disabled
-	 *          during generation to prevent re-entrancy, and re-enabled when generation completes. Any non-empty return
-	 *          from `RunInference` is treated as an error message and appended to the output.
-	 * @param None.
-	 * @return None.
-	 */
-	QObject::connect(sendButton, &QPushButton::clicked, [&]() {
-		output->clear();
 
-		const QString qPrompt = prompt->toPlainText();
-		if (qPrompt.isEmpty())
-			return;
+	window->resize(812, 812);
 
-		const std::string promptUtf8 = qPrompt.toUtf8().toStdString();
-		llama_model* model = runtime->model;
-		// Note: default template is a lot more complex for something we're trying to debug with.
-		//const char* tmpl = llama_model_chat_template(model, nullptr);
-		/*const char* qwen3VlJinjaTemplate = R"JINJA(
-			{{- if .system -}}{{ .system }} {{- end -}}{{ .prompt }}<end_of_turn>
-			{% -for message in messages%} 
-			{{ -'<|im_start|>' + message['role'] + '\n' }} 
-			{% -if message['role'] == 'assistant' and 'reasoning_content' in message% } 
-			{{ -'<think>\n' + message['reasoning_content'] + '\n</think>\n' }} 
-			{% -endif% } 
-			{{ -message['content'] + '<|im_end|>\n' }} 
-			{% -endfor% } 
-		)JINJA";*/
-
-		const char* qwen3VlJinjaTemplate = 
-		R"JINJA(
-		{{ -range .messages }}<start_of_turn>{{ .role }}
-		{{ .content }}<end_of_turn>
-		{{-end }}<start_of_turn>assistant)JINJA";
-
-		const std::string system = R"(
+	const std::string system = R"(
 			I admire you. You are an excellent software engineer with extensive knowledge of algorithms and ideal optimizations for time amd space complexity.
 			You are an expert with modern C++ and it is your preference.
 			Respond with succinct answers. Do not over-elaborate. 
 			Your responses should be short and your code solutions should be elegant.
-		)";
+	)";
+
+	const std::string chatTemplate = R"({%- if messages[0]['role'] == 'system' %}
+								{%- set system_message = messages[0]['content'] %}
+								{%- set loop_messages = messages[1:] %}{%- else %}
+								{%- set loop_messages = messages %}{%- endif %}
+								{{- bos_token }}
+								{%- for message in loop_messages %}
+								{%- if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}
+								{{- raise_exception('After the optional system message, conversation roles must alternate user/assistant/user/assistant/...') }}
+								{%- endif %}
+								{%- if message['role'] == 'user' %}
+								{%- if loop.first and system_message is defined %}
+								{{- ' [INST] ' + system_message + '\\n\\n' + message['content'] + ' [/INST]' }}{%- else %}
+								{{- ' [INST] ' + message['content'] + ' [/INST]' }}
+								{%- endif %}
+								{%- elif message['role'] == 'assistant' %}
+								{{- ' ' + message['content'] + eos_token}}
+								{%- else %}
+								{{- raise_exception('Only user and assistant roles are supported, with the exception of an initial optional system message!') }}
+								{%- endif %}
+								{%- endfor %}
+	)";
+
+	QObject::connect(sendButton, &QPushButton::clicked, [&]() {
+		// Prevent double-click
+		sendButton->setEnabled(false);
+
+		output->clear();
+
+		const QString qPrompt = prompt->toPlainText();
+		
+		if (qPrompt.isEmpty())
+			return;
+
+		const std::string promptUtf8 = qPrompt.toUtf8().toStdString();
 
 		const std::string usr = qPrompt.toStdString();
 
@@ -106,7 +118,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 		formatted.resize(32768);  
 
 		const int n = llama_chat_apply_template(
-			qwen3VlJinjaTemplate,
+			chatTemplate.c_str(),
 			messages,
 			std::size(messages),
 			true,
@@ -118,7 +130,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 			throw std::invalid_argument("Prompt template could not apply.");
 		}
 
-		output->appendPlainText(""); // Thinking ... (placeholder)
+		output->appendPlainText("");
 
 		auto streamBuffer = std::make_shared<StreamBuffer>();
 		auto uiTimer = new QTimer(window);
@@ -160,14 +172,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 			streamBuffer->pending += q;
 		};
 
-		// Prevent double-click
-		sendButton->setEnabled(false);
-
 		QPlainTextEdit* outputPtr = output;
 
 		// Run inference off the UI thread
 		QFuture future = QtConcurrent::run([model = runtime->model, promptUtf8, onText, streamBuffer, outputPtr, sendButton]() mutable {
 			// Run inference (streams via onText -> streamBuffer)
+
+			// Debugging
+			MessageBoxW(nullptr, L"About to infer...", L"Local LLM", MB_OK);
+
 			const std::string finalOrError = runInference(model, promptUtf8, onText);
 
 			// Timer stops when buffer drains
@@ -196,7 +209,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 		});
 	});
 
-	window->resize(812, 812);
 	window->show();
 
 	return QApplication::exec();

@@ -56,3 +56,8 @@ llama.cpp/ggml/
 /minja/*/**
 /LocalLLM.Minja.hpp
 /Models/gpt-oss-20b-mxfp4.gguf
+/Models/Magistral-Small-2509-Q4_K_M.gguf
+/Models/Ministral-3-14B-Reasoning-2512-8-0.gguf
+/Models/ministral.gguf
+/Models/Ministral-3-8B-Instruct-2512-Q8_0.gguf
+/Models/ohtct-sanitized-ministral-314b-instruct.gguf

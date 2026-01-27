@@ -28,26 +28,26 @@ std::string runInference(llama_model* model, const std::string& promptUtf8, cons
 		return failureMessage;
 	}
 
-	std::string result;
+	std::string result = "";  // NOLINT(readability-redundant-string-init)
 	int32_t position = static_cast<int32_t>(promptTokens.size());
 
 	// build sampler once per RunInference
-	llama_sampler_chain_params sc_params = llama_sampler_chain_default_params();
+	llama_sampler_chain_params scParams = llama_sampler_chain_default_params();
 	
-	llama_sampler* smpl = llama_sampler_chain_init(sc_params);
+	llama_sampler* smpl = llama_sampler_chain_init(scParams);
 	
 	// anti-loop / quality defaults:
-	llama_sampler_chain_add(smpl, llama_sampler_init_penalties(
-		/* penalty_last_n */ 128,
-		/* penalty_repeat */ 1.12f,
-		/* penalty_freq   */ 0.00f,
-		/* penalty_pres   */ 0.00f
-	));
+	//llama_sampler_chain_add(smpl, llama_sampler_init_penalties(
+	//	/* penalty_last_n */ 128,
+	//	/* penalty_repeat */ 1.12f,
+	//	/* penalty_freq   */ 0.00f,
+	//	/* penalty_pres   */ 0.00f
+	//));
 
-	llama_sampler_chain_add(smpl, llama_sampler_init_top_k(40));
-	llama_sampler_chain_add(smpl, llama_sampler_init_top_p(0.95f, 1));
-	llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.70f));
-	llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+	//llama_sampler_chain_add(smpl, llama_sampler_init_top_k(40));
+	//llama_sampler_chain_add(smpl, llama_sampler_init_top_p(0.95f, 1));
+	//llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.70f));
+	//llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
 	// Generate
 	for (int i = 0; i < maxAppendedTokens; ++i) {
@@ -77,5 +77,5 @@ std::string runInference(llama_model* model, const std::string& promptUtf8, cons
 	}
 
 	llama_free(ctx);
-	return "";
+	return result;
 }
