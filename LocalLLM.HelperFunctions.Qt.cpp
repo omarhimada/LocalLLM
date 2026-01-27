@@ -1,4 +1,4 @@
-#include "LocalLLM.h"
+#include <LocalLLM.h>
 
 QFont makeCodeFont(const int pt = 12) {
     // Preferred families in order
@@ -10,7 +10,6 @@ QFont makeCodeFont(const int pt = 12) {
         "Consolas"
     };
 
-    QFontDatabase db;
     for (const auto& fam : preferred) {
         if (QFontDatabase::families().contains(fam)) {
             QFont f(fam);

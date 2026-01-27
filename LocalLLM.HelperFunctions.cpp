@@ -1,4 +1,4 @@
-#include "LocalLLM.HelperFunctions.h"
+#include <LocalLLM.h>
 
 std::wstring getExeDir() {
 	wchar_t path[MAX_PATH];
@@ -10,7 +10,7 @@ std::wstring getExeDir() {
 }
 
 QString fromExe(const wchar_t* relative) {
-	std::wstring full = getExeDir() + L"\\" + relative;
+	const std::wstring full = getExeDir() + L"\\" + relative;
 	return QString::fromWCharArray(full.c_str());
 }
 
@@ -23,12 +23,12 @@ std::string wideToUtf8(const std::wstring& w) {
 	return result;
 }
 
-std::wstring StringToWString(const std::string& str) {
+std::wstring stringToWString(const std::string& str) {
 	if (str.empty()) return {};
 	
-	const int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), static_cast<int>(str.size()), NULL, 0);
-	std::wstring wstrTo(size_needed, 0);
+	const int sizeNeeded = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), static_cast<int>(str.size()), NULL, 0);
+	std::wstring wstrTo(sizeNeeded, 0);
 	
-	MultiByteToWideChar(CP_UTF8, 0, str.c_str(), static_cast<int>(str.size()), wstrTo.data(), size_needed);
+	MultiByteToWideChar(CP_UTF8, 0, str.c_str(), static_cast<int>(str.size()), wstrTo.data(), sizeNeeded);
 	return wstrTo;
 }

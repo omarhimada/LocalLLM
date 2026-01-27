@@ -1,9 +1,5 @@
 #pragma once
-#include "llama.h"
-#include <string>
-#include <vector>
-#include <QtConcurrent/QtConcurrent>
-#include <QtCore/QString>
+#include <LocalLLM.h>
 
 struct StreamBuffer {
 	std::mutex m;
@@ -14,7 +10,6 @@ struct StreamBuffer {
 struct DecodeResult {
 	int rc = 0;
 	bool ok() const { return rc == 0; }
-	//explicit operator bool() const { return ok(); }
 };
 
 /**

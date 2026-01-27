@@ -34,15 +34,15 @@
 struct LocalRuntime {
 	llama_model* model = nullptr;
 
-	LocalRuntime(const std::string& modelPathUtf8) {
+	explicit LocalRuntime(const std::string& modelPathUtf8) {
 		llama_backend_init();
 
-		llama_model_params mp = llama_model_default_params();
+		const llama_model_params mp = llama_model_default_params();
 		model = llama_model_load_from_file(modelPathUtf8.c_str(), mp);
 
 		if (model == nullptr) {
 			std::string failedToLoadModelFromPath = "Failed to load model from path: ";
-			std::wstring modelPathMessage = StringToWString(failedToLoadModelFromPath.append(modelPathUtf8));
+			std::wstring modelPathMessage = stringToWString(failedToLoadModelFromPath.append(modelPathUtf8));
 
 			MessageBoxW(nullptr, modelPathMessage.c_str(), L"Local LLM", MB_ICONERROR);
 		}

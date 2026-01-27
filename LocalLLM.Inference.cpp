@@ -1,11 +1,10 @@
-#include "LocalLLM.Inference.h"
-#include "LocalLLM.Tokenization.h"
+#include <LocalLLM.h>
 
 std::string runInference(llama_model* model, const std::string& promptUtf8, const std::function<void(const std::string&)>& onText) {
 	llama_context_params params = llama_context_default_params();
 	constexpr int maxAppendedTokens = 2048;
 	params.n_ctx = 4096; // 2048; //8192;
-	params.n_batch = 1024;	
+	params.n_batch = 1024;
 
 	llama_context* ctx = llama_init_from_model(model, params);
 	if (!ctx) return "Failed to init llama context.";
@@ -34,8 +33,9 @@ std::string runInference(llama_model* model, const std::string& promptUtf8, cons
 
 	// build sampler once per RunInference
 	llama_sampler_chain_params sc_params = llama_sampler_chain_default_params();
+	
 	llama_sampler* smpl = llama_sampler_chain_init(sc_params);
-
+	
 	// anti-loop / quality defaults:
 	llama_sampler_chain_add(smpl, llama_sampler_init_penalties(
 		/* penalty_last_n */ 128,
@@ -45,7 +45,7 @@ std::string runInference(llama_model* model, const std::string& promptUtf8, cons
 	));
 
 	llama_sampler_chain_add(smpl, llama_sampler_init_top_k(40));
-	llama_sampler_chain_add(smpl, llama_sampler_init_top_p(0.90f, 1));
+	llama_sampler_chain_add(smpl, llama_sampler_init_top_p(0.95f, 1));
 	llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.70f));
 	llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
@@ -67,7 +67,7 @@ std::string runInference(llama_model* model, const std::string& promptUtf8, cons
 		// Decode this token so logits update for next step
 		std::vector<llama_token> one{ token };
 
-		DecodeResult decodeResult = decodeTokens(ctx, one, position);
+		decodeResult = decodeTokens(ctx, one, position);
 		if (!decodeResult.ok()) {
 			llama_free(ctx);
 			return "Failed to decode result.";

@@ -1,7 +1,5 @@
 #pragma once
-#include <string>
-#include <windows.h>
-#include <QtCore/QString>
+#include <LocalLLM.h>
 
 /**
  * @brief Gets the directory path where the current executable is located.
@@ -28,4 +26,4 @@ QString fromExe(const wchar_t* relative);
  * @param str The UTF-8 encoded string to convert.
  * @return A wide string representation of the input string, or an empty wide string if the input is empty.
  */
-std::wstring StringToWString(const std::string& str);
+std::wstring stringToWString(const std::string& str);

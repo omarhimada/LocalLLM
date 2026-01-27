@@ -48,3 +48,11 @@ llama.cpp/ggml/
 /lib/ggml-cpu.dll
 /lib/ggml.dll
 /lib/mtmd.dll
+
+# Do not include minja
+/minja
+/minja/
+/minja/*
+/minja/*/**
+/LocalLLM.Minja.hpp
+/Models/gpt-oss-20b-mxfp4.gguf

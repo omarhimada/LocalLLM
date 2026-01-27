@@ -1,4 +1,4 @@
-﻿#include "LocalLLM.h"
+﻿#include <LocalLLM.h>
 
 /**
  * @brief Entry point for the LocalLLM Qt application. Initializes the Qt framework, loads a GGUF language model, creates the main GUI window with prompt input and output display areas, and starts the application event loop.
@@ -11,20 +11,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 
 	QApplication app(argc, argv);
 
-	// Qwen3-VL-8B-Thinking
-	std::wstring modelPathW = getExeDir() + L"\\..\\..\\Models\\qwen.gguf";
+	const std::wstring modelPathW = getExeDir() + L"\\..\\..\\Models\\gpt-oss-20b-mxfp4.gguf.gguf";
 	const std::string modelPathUtf8 = wideToUtf8(modelPathW);
 
-	LocalRuntime* runtime = new LocalRuntime(modelPathUtf8);
+	const auto runtime = new LocalRuntime(modelPathUtf8);
 	if (runtime->model == nullptr) {
 		MessageBoxW(nullptr, L"Failed to load GGUF model.", L"Local LLM", MB_ICONERROR);
 		return 1;
 	}
 
-	QWidget* window = new QWidget();
+	auto window = new QWidget();
 	auto* layout = new QVBoxLayout(window);
 	
 	auto* prompt = new QPlainTextEdit();
+	prompt->setFont(makeCodeFont(12));
 	prompt->setPlaceholderText("");
 	prompt->setMaximumBlockCount(1000);
 
@@ -36,6 +36,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 	
 	// Model output
 	auto* output = new QPlainTextEdit();
+	output->setFont(makeCodeFont(12));
 
 	auto* debugOutput = new QPlainTextEdit();
 	debugOutput->setReadOnly(true);
@@ -67,10 +68,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 
 		const std::string promptUtf8 = qPrompt.toUtf8().toStdString();
 		llama_model* model = runtime->model;
-
 		// Note: default template is a lot more complex for something we're trying to debug with.
 		//const char* tmpl = llama_model_chat_template(model, nullptr);
-		const char* qwen3VlJinjaTemplate = R"JINJA(
+		/*const char* qwen3VlJinjaTemplate = R"JINJA(
 			{{- if .system -}}{{ .system }} {{- end -}}{{ .prompt }}<end_of_turn>
 			{% -for message in messages%} 
 			{{ -'<|im_start|>' + message['role'] + '\n' }} 
@@ -79,22 +79,31 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 			{% -endif% } 
 			{{ -message['content'] + '<|im_end|>\n' }} 
 			{% -endfor% } 
-		)JINJA";
+		)JINJA";*/
 
-		/*{ % -if add_generation_prompt% } \
-		{{ -'<|im_start|>assistant\n<think>\n' }}
-		{ % -endif% }*/
+		const char* qwen3VlJinjaTemplate = 
+		R"JINJA(
+		{{ -range .messages }}<start_of_turn>{{ .role }}
+		{{ .content }}<end_of_turn>
+		{{-end }}<start_of_turn>assistant)JINJA";
 
-		const std::string sys = "You are an excellent software engineer with extensive knowledge of algorithms and ideal optimizing for time amd space complexity. You are familiar with modern C++.";
+		const std::string system = R"(
+			I admire you. You are an excellent software engineer with extensive knowledge of algorithms and ideal optimizations for time amd space complexity.
+			You are an expert with modern C++ and it is your preference.
+			Respond with succinct answers. Do not over-elaborate. 
+			Your responses should be short and your code solutions should be elegant.
+		)";
+
 		const std::string usr = qPrompt.toStdString();
 
-		llama_chat_message messages[] = {
-		   { "system", sys.c_str() },
+		const llama_chat_message messages[] = {
+		   { "system", system.c_str() },
 		   { "user", usr.c_str() }
 		};
 
 		std::string formatted;
-		formatted.resize(32 * 1024);
+		// NOLINT(bugprone-implicit-widening-of-multiplication-result)
+		formatted.resize(32768);  
 
 		const int n = llama_chat_apply_template(
 			qwen3VlJinjaTemplate,
@@ -112,17 +121,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 		output->appendPlainText(""); // Thinking ... (placeholder)
 
 		auto streamBuffer = std::make_shared<StreamBuffer>();
-		QTimer* _uiTimer = new QTimer(window);
-		_uiTimer->setInterval(16); // ~60 fps
+		auto uiTimer = new QTimer(window);
+		uiTimer->setInterval(15); // ~60 fps
 
-		QObject::connect(_uiTimer, &QTimer::timeout, [window, output, streamBuffer, _uiTimer]() {
+		QObject::connect(uiTimer, &QTimer::timeout, [window, output, streamBuffer, uiTimer]() {
 			QString chunk;
 			{
 				std::scoped_lock lock(streamBuffer->m);
 				if (streamBuffer->pending.isEmpty() && !streamBuffer->done) return;
 				chunk.swap(streamBuffer->pending);
 				if (streamBuffer->done && chunk.isEmpty()) {
-					_uiTimer->stop(); auto* logEdit = new QPlainTextEdit();
+					uiTimer->stop(); auto* logEdit = new QPlainTextEdit();
 					logEdit->setReadOnly(true);
 					logEdit->setMaximumBlockCount(2000); // keeps memory stable
 
@@ -135,14 +144,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 					// Helper
 					auto log = [&](const QString& s) {
 						logEdit->appendPlainText(QTime::currentTime().toString("HH:mm:ss") + "  " + s);
-						};
+					};
 				}
 			}
 			output->moveCursor(QTextCursor::End);
 			output->insertPlainText(chunk);
 		});
 
-		_uiTimer->start();
+		uiTimer->start();
 
 		// Worker callback (called from inference thread)
 		std::function onText = [streamBuffer](const std::string& piece) {
@@ -159,7 +168,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 		// Run inference off the UI thread
 		QFuture future = QtConcurrent::run([model = runtime->model, promptUtf8, onText, streamBuffer, outputPtr, sendButton]() mutable {
 			// Run inference (streams via onText -> streamBuffer)
-			std::string finalOrError = runInference(model, promptUtf8, onText);
+			const std::string finalOrError = runInference(model, promptUtf8, onText);
 
 			// Timer stops when buffer drains
 			{

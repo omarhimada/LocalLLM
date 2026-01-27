@@ -1,4 +1,5 @@
 #pragma once
+#include <LocalLLM.h>
 
 /**
  * @brief Gets the directory path where the current executable is located.
