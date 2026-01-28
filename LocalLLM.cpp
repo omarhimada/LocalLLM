@@ -24,7 +24,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 	 *	
 	 * TODO: This was not the solution. Going to try the unsloth model instead. 
 	 */
-	const std::wstring modelPathW = getExeDir() + L"\\..\\..\\Models\\ohtct-sanitized-ministral-314b-instruct.gguf";
+	const std::wstring modelPathW = getExeDir() + L"\\..\\..\\Models\\qwen.gguf";
 	const std::string modelPathUtf8 = wideToUtf8(modelPathW);
 
 	const auto runtime = new LocalRuntime(modelPathUtf8);

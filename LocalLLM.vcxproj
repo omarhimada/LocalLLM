@@ -68,7 +68,7 @@
     <QtInstall>msvc2022_64</QtInstall>
     <QtPathBinaries>C:\Qt\6.10.1\msvc2022_64\bin</QtPathBinaries>
     <QtPathLibraryExecutables>C:\Qt\6.10.1\msvc2022_64\modules</QtPathLibraryExecutables>
-    <QtModules>core;gui;qml;widgets;sql</QtModules>
+    <QtModules>core;gui;qml;widgets;sql;svg</QtModules>
   </PropertyGroup>
   <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') OR !Exists('$(QtMsBuild)\Qt.props')">
     <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
@@ -154,9 +154,13 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)llama.cpp\build\src;$(SolutionDir)llama.cpp\build\ggml\src;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>llama.lib;ggml.lib;ggml-base.lib;ggml-cpu.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)llama.cpp\build\src;$(SolutionDir)llama.cpp\build\ggml\src;C:\Qt\6.10.1\msvc2022_64\lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>llama.lib;ggml.lib;ggml-base.lib;ggml-cpu.lib;Qt6Widgets.lib;Qt6Gui.lib;Qt6Core.lib;Qt6Svg.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="LocalLLM.h" />

@@ -61,3 +61,4 @@ llama.cpp/ggml/
 /Models/ministral.gguf
 /Models/Ministral-3-8B-Instruct-2512-Q8_0.gguf
 /Models/ohtct-sanitized-ministral-314b-instruct.gguf
+/Models
