@@ -17,12 +17,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 	 *	 Exception thrown at 0x00007FFEEBA1A80A in LocalLLM.exe: Microsoft C++ exception: std::runtime_error at memory location 0x000000A358B5E518.
 	 *	 Exception thrown at 0x00007FFEEBA1A80A in LocalLLM.exe: Microsoft C++ exception: std::runtime_error at memory location 0x000000A358B5F208.
 	 * --------------------------------------------
-	 * Used gguf_new_metadata.py to accomplish this:
-	 * e.g.:
-	 *	(venv) PS C:\...\source\gg-py> python "C:\...\source\gg-py\gguf\scripts\gguf_new_metadata.py" "C:\...\...\ministral-3-14B-Instruct.gguf" "C:\...\...\ohtct-sanitized-ministral-3-14B-Instruct.gguf" --remove-metadata "tokenizer.chat_template"
-	 *	
-	 *	
-	 * TODO: This was not the solution. Going to try the unsloth model instead. 
+	 * qwen works
 	 */
 	const std::wstring modelPathW = getExeDir() + L"\\..\\..\\Models\\qwen.gguf";
 	const std::string modelPathUtf8 = wideToUtf8(modelPathW);
@@ -64,34 +59,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 
 	window->resize(812, 812);
 
-	const std::string system = R"(
-			I admire you. You are an excellent software engineer with extensive knowledge of algorithms and ideal optimizations for time amd space complexity.
-			You are an expert with modern C++ and it is your preference.
-			Respond with succinct answers. Do not over-elaborate. 
-			Your responses should be short and your code solutions should be elegant.
-	)";
-
-	const std::string chatTemplate = R"({%- if messages[0]['role'] == 'system' %}
-								{%- set system_message = messages[0]['content'] %}
-								{%- set loop_messages = messages[1:] %}{%- else %}
-								{%- set loop_messages = messages %}{%- endif %}
-								{{- bos_token }}
-								{%- for message in loop_messages %}
-								{%- if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}
-								{{- raise_exception('After the optional system message, conversation roles must alternate user/assistant/user/assistant/...') }}
-								{%- endif %}
-								{%- if message['role'] == 'user' %}
-								{%- if loop.first and system_message is defined %}
-								{{- ' [INST] ' + system_message + '\\n\\n' + message['content'] + ' [/INST]' }}{%- else %}
-								{{- ' [INST] ' + message['content'] + ' [/INST]' }}
-								{%- endif %}
-								{%- elif message['role'] == 'assistant' %}
-								{{- ' ' + message['content'] + eos_token}}
-								{%- else %}
-								{{- raise_exception('Only user and assistant roles are supported, with the exception of an initial optional system message!') }}
-								{%- endif %}
-								{%- endfor %}
-	)";
+	const std::string system = R"(I admire you. You are an excellent software engineer with extensive knowledge of algorithms and ideal optimizations for time amd space complexity. You are an expert with modern C++ and it is your preference. Respond with succinct answers. Do not over-elaborate. Your responses should be short and your code solutions should be elegant.)";
+	const std::string chatTemplate = "{%- if messages[0]['role'] == 'system' %}{%- set system_message = messages[0]['content'] %}{%- set loop_messages = messages[1:] %}{%- else %}{%- set loop_messages = messages %}{%- endif %}{{- bos_token }}{%- for message in loop_messages %}{%- if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}{{- raise_exception('After the optional system message, conversation roles must alternate user/assistant/user/assistant/...') }}{%- endif %}{%- if message['role'] == 'user' %}{%- if loop.first and system_message is defined %}{{- ' [INST] ' + system_message + '\\n\\n' + message['content'] + ' [/INST]' }}{%- else %}{{- ' [INST] ' + message['content'] + ' [/INST]' }}{%- endif %}{%- elif message['role'] == 'assistant' %}{{- ' ' + message['content'] + eos_token}}{%- else %}{{- raise_exception('Only user and assistant roles are supported, with the exception of an initial optional system message!') }}{%- endif %}{%- endfor %}";
 
 	QObject::connect(sendButton, &QPushButton::clicked, [&]() {
 		// Prevent double-click
@@ -121,7 +90,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 			chatTemplate.c_str(),
 			messages,
 			std::size(messages),
-			true,
+			false,
 			formatted.data(),
 			static_cast<int>(formatted.size())
 		);
@@ -177,9 +146,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 		// Run inference off the UI thread
 		QFuture future = QtConcurrent::run([model = runtime->model, promptUtf8, onText, streamBuffer, outputPtr, sendButton]() mutable {
 			// Run inference (streams via onText -> streamBuffer)
-
-			// Debugging
-			MessageBoxW(nullptr, L"About to infer...", L"Local LLM", MB_OK);
 
 			const std::string finalOrError = runInference(model, promptUtf8, onText);
 
